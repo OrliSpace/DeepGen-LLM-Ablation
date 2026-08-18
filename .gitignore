@@ -1,0 +1,33 @@
+# User specific
+TODO_ABLATION_NO_RL.md
+.venv/
+.venv*/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Heavy Weights & Checkpoints
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.onnx
+
+# Large directories & caches
+deepgen/hf_cache/
+deepgen/work_dirs/
+deepgen/outputs/
+deepgen/logs/
+deepgen/checkpoints/
+deepgen/model_zoo/
+deepgen/data/
+*.out
+*.err
