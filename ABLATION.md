@@ -134,9 +134,13 @@ All quantitative evaluations were conducted across **3 independent diffusion ran
 
 ---
 
-## 5. End-to-End Inference & Reproduction Guide
+## 5. Pretrained Weights & Quickstart Reproduction
 
-### 5.1 Standalone Inference Script (with Prefix Reconciliation)
+The trained 50,000-step adapter weights (~21M parameters, ~80 MB) are available as a standalone checkpoint file:
+* **Standalone Checkpoint:** `work_dirs/deepgen_sft_llm_adapter_50k.pt`
+* **Full Training State:** `work_dirs/sft_llm_ablation/iter_50000.pth`
+
+### 5.1 Standalone Inference Script (Local or Automatic Hugging Face Hub Download)
 
 ```python
 import os
@@ -147,31 +151,35 @@ from xtuner.registry import BUILDER
 
 # 1. Setup paths and device
 config_path = "configs/models/deepgen_sft_llm_adapter.py"
-checkpoint_path = "work_dirs/sft_llm_ablation/iter_50000.pth"
+# Provide local file path OR Hugging Face Hub repo ID
+checkpoint_path = "work_dirs/deepgen_sft_llm_adapter_50k.pt" 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
-# 2. Build model and load trained adapter weights with prefix stripping
+# 2. Build model
 config = Config.fromfile(config_path)
 model = BUILDER.build(config.model)
 
+# 3. Load adapter weights (supports local .pt or auto-download from Hugging Face Hub)
 if os.path.exists(checkpoint_path):
-    raw_ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    raw_sd = raw_ckpt.get("state_dict", raw_ckpt)
-    
-    # Strip DDP 'module.' prefix from checkpoint keys
-    clean_sd = {k.replace("module.", ""): v for k, v in raw_sd.items()}
-    model.load_state_dict(clean_sd, strict=False)
-    
-    # Runtime L1 norm verification
-    adapter_norm = sum(p.abs().sum().item() for name, p in model.named_parameters() if "adapter" in name)
-    print(f"Loaded Adapter L1 Norm: {adapter_norm:.4f}")
-    assert adapter_norm > 100.0, "Adapter weights failed to load!"
+    resolved_ckpt = checkpoint_path
+else:
+    from huggingface_hub import hf_hub_download
+    resolved_ckpt = hf_hub_download(repo_id=checkpoint_path, filename="deepgen_sft_llm_adapter_50k.pt")
+
+state_dict = torch.load(resolved_ckpt, map_location="cpu", weights_only=False)
+raw_sd = state_dict.get("state_dict", state_dict)
+clean_sd = {k.replace("module.", "").replace("model.", ""): v for k, v in raw_sd.items() if "adapter" in k}
+model.load_state_dict(clean_sd, strict=False)
+
+adapter_norm = sum(p.abs().sum().item() for name, p in model.named_parameters() if "adapter" in name)
+print(f"Loaded Adapter L1 Norm: {adapter_norm:.4f}")
+assert adapter_norm > 100.0, "Adapter weights failed to load!"
 
 model = model.to(device=device, dtype=dtype).eval()
 generator = torch.Generator(device=device).manual_seed(42)
 
-# 3. Generate Image
+# 4. Generate Image
 prompt = "A high-resolution photograph of a red ceramic mug and an open book on a rustic oak table."
 with torch.no_grad():
     images = model.generate(
@@ -198,19 +206,39 @@ To reproduce the multi-seed evaluation across seeds `[42, 123, 999]` and all 5 c
 ```bash
 cd /home/dsi/davidpo/projects/Semi/deepgen
 
-# Submit via Slurm batch job:
-sbatch jobs/eval_all_benchmarks.sbatch work_dirs/sft_llm_ablation/iter_50000.pth
-
-# Or run directly via CLI:
+# Execute statistical evaluation on standalone adapter checkpoint
 python scripts/evaluation/run_statistical_eval.py \
     --config configs/models/deepgen_sft_llm_adapter.py \
-    --checkpoint work_dirs/sft_llm_ablation/iter_50000.pth \
+    --checkpoint work_dirs/deepgen_sft_llm_adapter_50k.pt \
     --output_dir outputs/eval_results/statistical_run \
     --num_samples 25 \
     --batch_size 4 \
     --cfg_scale 4.0 \
     --num_steps 50 \
     --seeds 42 123 999
+```
+
+### 5.3 Exporting & Uploading Standalone Weights to Hugging Face Hub
+
+To export and upload adapter weights:
+```bash
+# 1. Export standalone .pt from full checkpoint:
+python scripts/export_adapter_weights.py \
+    --checkpoint work_dirs/sft_llm_ablation/iter_50000.pth \
+    --output work_dirs/deepgen_sft_llm_adapter_50k.pt
+```
+
+```python
+# 2. Upload to Hugging Face Hub:
+from huggingface_hub import HfApi
+
+api = HfApi()
+api.upload_file(
+    path_or_fileobj="work_dirs/deepgen_sft_llm_adapter_50k.pt",
+    path_in_repo="deepgen_sft_llm_adapter_50k.pt",
+    repo_id="your-username/deepgen-sft-llm-adapter",
+    repo_type="model",
+)
 ```
 
 ---

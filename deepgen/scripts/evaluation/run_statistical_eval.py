@@ -33,11 +33,28 @@ def load_clean_model(config_path, checkpoint_path, device, dtype, ablation_mode=
     cfg = Config.fromfile(config_path)
     model = BUILDER.build(cfg.model)
 
-    is_trained_adapter = checkpoint_path and os.path.exists(checkpoint_path) and "iter_" in checkpoint_path
+    resolved_ckpt_path = None
+    if checkpoint_path:
+        if os.path.exists(checkpoint_path):
+            resolved_ckpt_path = checkpoint_path
+        else:
+            try:
+                from huggingface_hub import hf_hub_download
+                print(f"Attempting to download adapter checkpoint from Hugging Face Hub: {checkpoint_path}...")
+                resolved_ckpt_path = hf_hub_download(
+                    repo_id=checkpoint_path,
+                    filename="deepgen_sft_llm_adapter_50k.pt"
+                )
+                print(f"Downloaded Hugging Face Hub weight to: {resolved_ckpt_path}")
+            except Exception as e:
+                print(f"[WARN] Hugging Face Hub download failed or path not found: {e}")
+                resolved_ckpt_path = None
+
+    is_trained_adapter = resolved_ckpt_path and os.path.exists(resolved_ckpt_path)
     
-    if checkpoint_path and os.path.exists(checkpoint_path):
-        print(f"Loading state dict from: {checkpoint_path}")
-        raw_ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    if is_trained_adapter:
+        print(f"Loading state dict from: {resolved_ckpt_path}")
+        raw_ckpt = torch.load(resolved_ckpt_path, map_location="cpu", weights_only=False)
         raw_sd = raw_ckpt.get("state_dict", raw_ckpt)
         
         # Cleanly strip 'module.' or 'model.' prefixes from DDP/MMEngine
@@ -48,10 +65,11 @@ def load_clean_model(config_path, checkpoint_path, device, dtype, ablation_mode=
                 clean_k = clean_k[7:]
             if clean_k.startswith("model."):
                 clean_k = clean_k[6:]
-            clean_sd[clean_k] = v
+            if "adapter" in clean_k:
+                clean_sd[clean_k] = v
             
         load_res = model.load_state_dict(clean_sd, strict=False)
-        print(f"Matched loaded keys count: {len(clean_sd)}, Missing keys in model: {len(load_res.missing_keys)}")
+        print(f"Matched loaded adapter keys count: {len(clean_sd)}, Missing keys in model: {len(load_res.missing_keys)}")
     else:
         print("Initializing Step 0 / Base model (No adapter checkpoint loaded)")
 

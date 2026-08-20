@@ -152,9 +152,13 @@ Because the BIU `A100-4h` partition enforces strict 4-hour job timeouts, the Slu
 
 ---
 
-## 🚀 Quickstart: Inference & Evaluation Reproduction
+## 🚀 Pretrained Weights & Quickstart Evaluation
 
-### 1. Standalone Python Inference (with Prefix Reconciliation)
+Our fine-tuned adapter weights (~21M parameters, ~80 MB) are available as a standalone checkpoint file:
+* **Standalone Checkpoint:** `work_dirs/deepgen_sft_llm_adapter_50k.pt`
+* **Full Training State:** `work_dirs/sft_llm_ablation/iter_50000.pth`
+
+### 1. Standalone Python Inference (Local or Automatic Hugging Face Hub Download)
 ```python
 import os
 import torch
@@ -164,28 +168,35 @@ from xtuner.registry import BUILDER
 
 # 1. Setup paths and device
 config_path = "configs/models/deepgen_sft_llm_adapter.py"
-checkpoint_path = "work_dirs/sft_llm_ablation/iter_50000.pth"
+# Provide local file path OR Hugging Face Hub repo ID (e.g., "your-org/deepgen-llm-adapter")
+checkpoint_path = "work_dirs/deepgen_sft_llm_adapter_50k.pt" 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
-# 2. Build model and load trained adapter weights with prefix stripping
+# 2. Build model
 config = Config.fromfile(config_path)
 model = BUILDER.build(config.model)
 
+# 3. Load adapter weights (supports local .pt or auto-download from Hugging Face Hub)
 if os.path.exists(checkpoint_path):
-    raw_ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    raw_sd = raw_ckpt.get("state_dict", raw_ckpt)
-    clean_sd = {k.replace("module.", ""): v for k, v in raw_sd.items()}
-    model.load_state_dict(clean_sd, strict=False)
-    
-    adapter_norm = sum(p.abs().sum().item() for name, p in model.named_parameters() if "adapter" in name)
-    print(f"Loaded Adapter L1 Norm: {adapter_norm:.4f}")
-    assert adapter_norm > 100.0, "Adapter weights failed to load!"
+    resolved_ckpt = checkpoint_path
+else:
+    from huggingface_hub import hf_hub_download
+    resolved_ckpt = hf_hub_download(repo_id=checkpoint_path, filename="deepgen_sft_llm_adapter_50k.pt")
+
+state_dict = torch.load(resolved_ckpt, map_location="cpu", weights_only=False)
+raw_sd = state_dict.get("state_dict", state_dict)
+clean_sd = {k.replace("module.", "").replace("model.", ""): v for k, v in raw_sd.items() if "adapter" in k}
+model.load_state_dict(clean_sd, strict=False)
+
+adapter_norm = sum(p.abs().sum().item() for name, p in model.named_parameters() if "adapter" in name)
+print(f"Loaded Adapter L1 Norm: {adapter_norm:.4f}")
+assert adapter_norm > 100.0, "Adapter weights failed to load!"
 
 model = model.to(device=device, dtype=dtype).eval()
 generator = torch.Generator(device=device).manual_seed(42)
 
-# 3. Generate Image
+# 4. Generate Image
 prompt = "A high-resolution photograph of a red ceramic mug and an open book on a rustic oak table."
 with torch.no_grad():
     images = model.generate(
@@ -205,11 +216,29 @@ pil_img.save("outputs/t2i_generated.png")
 print("Saved outputs/t2i_generated.png")
 ```
 
-### 2. Multi-Seed Statistical Evaluation CLI
-To reproduce the full statistical sweep across seeds `[42, 123, 999]` and all 5 conditions:
+### 2. Multi-Seed Statistical Evaluation CLI (One-Line Execution)
 ```bash
 cd /home/dsi/davidpo/projects/Semi/deepgen
-sbatch jobs/eval_all_benchmarks.sbatch work_dirs/sft_llm_ablation/iter_50000.pth
+
+# Run statistical evaluation on standalone adapter checkpoint across seeds [42, 123, 999]
+python scripts/evaluation/run_statistical_eval.py \
+    --checkpoint work_dirs/deepgen_sft_llm_adapter_50k.pt \
+    --num_samples 25 \
+    --seeds 42 123 999
+```
+
+### 3. Uploading Weights to Hugging Face Hub (Optional)
+To publish the exported adapter checkpoint to the Hugging Face Hub:
+```python
+from huggingface_hub import HfApi
+
+api = HfApi()
+api.upload_file(
+    path_or_fileobj="deepgen/work_dirs/deepgen_sft_llm_adapter_50k.pt",
+    path_in_repo="deepgen_sft_llm_adapter_50k.pt",
+    repo_id="your-username/deepgen-sft-llm-adapter",
+    repo_type="model",
+)
 ```
 
 ---
