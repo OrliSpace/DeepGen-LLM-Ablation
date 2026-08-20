@@ -7,19 +7,33 @@ from mmengine.config import Config
 from xtuner.registry import BUILDER
 
 
-def run_smoke_test(config_path="configs/models/deepgen_sft_llm_adapter.py", output_dir="outputs/smoke_test_eval"):
+from xtuner.model.utils import guess_load_checkpoint
+import argparse
+
+
+def run_smoke_test(config_path="configs/models/deepgen_sft_llm_adapter.py", checkpoint_path=None, output_dir="outputs/smoke_test_eval"):
     os.makedirs(output_dir, exist_ok=True)
-    print(f"=== [Smoke Test] 1. Loading model configuration from: {config_path} ===")
+    print(f"=== [Smoke Test] 1. Loading model configuration from: {config_path} ===", flush=True)
     config = Config.fromfile(config_path)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Device: {device}")
+    print(f"Device: {device}", flush=True)
 
-    print("=== [Smoke Test] 2. Building DeepGenSFTLLMAdapter model ===")
+    print("=== [Smoke Test] 2. Building DeepGenSFTLLMAdapter model ===", flush=True)
     model = BUILDER.build(config.model)
+
+    if checkpoint_path is not None and os.path.exists(checkpoint_path):
+        print(f"Loading trained checkpoint from: {checkpoint_path}", flush=True)
+        if checkpoint_path.endswith(".pt"):
+            state_dict = torch.load(checkpoint_path, map_location="cpu")
+        else:
+            state_dict = guess_load_checkpoint(checkpoint_path)
+        missing, unexpected = model.load_state_dict(state_dict, strict=False)
+        print(f"Checkpoint loaded: {len(state_dict)} tensors (missing={len(missing)}, unexpected={len(unexpected)})", flush=True)
+
     model = model.to(device=device, dtype=torch.bfloat16 if device == "cuda" else torch.float32)
     model.eval()
-    print("Model successfully built and initialized in eval mode.")
+    print("Model successfully built and initialized in eval mode.", flush=True)
 
     # Generator for reproducibility
     generator = torch.Generator(device=device).manual_seed(42)
@@ -107,4 +121,10 @@ def run_smoke_test(config_path="configs/models/deepgen_sft_llm_adapter.py", outp
 
 
 if __name__ == "__main__":
-    run_smoke_test()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="configs/models/deepgen_sft_llm_adapter.py", type=str)
+    parser.add_argument("--checkpoint", default=None, type=str)
+    parser.add_argument("--output", default="outputs/smoke_test_eval", type=str)
+    args = parser.parse_args()
+
+    run_smoke_test(config_path=args.config, checkpoint_path=args.checkpoint, output_dir=args.output)

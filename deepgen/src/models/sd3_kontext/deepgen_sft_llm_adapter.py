@@ -783,7 +783,8 @@ class DeepGenSFTLLMAdapter(BaseModel):
                 cond_hidden_states=cond_latents,
                 return_dict=False,
             )[0]
-            noise_pred = torch.stack(noise_pred, dim=0)
+            if isinstance(noise_pred, (list, tuple)):
+                noise_pred = torch.stack(noise_pred, dim=0)
 
             noise_pred_text, noise_pred_uncond = noise_pred.chunk(2)
             noise_pred = noise_pred_uncond + cfg_scale * (noise_pred_text - noise_pred_uncond)

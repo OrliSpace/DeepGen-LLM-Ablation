@@ -42,8 +42,8 @@ echo "Partition: $SLURM_JOB_PARTITION | Node: $SLURMD_NODENAME"
 echo "=========================================================="
 
 # 1. First run smoke test validation
-echo "--> Step 0: Executing Fast Smoke Test..."
-python scripts/evaluation/smoke_test_eval.py
+echo "--> Step 0: Executing Fast Smoke Test on Trained Checkpoint..."
+python scripts/evaluation/smoke_test_eval.py --checkpoint "$CKPT_PATH" --config "$CONFIG_PATH" --output "$OUTPUT_ROOT/smoke_test"
 
 # 2. Text-to-Image Benchmarks (if evaluation data folders exist)
 if [ -f "evaluation/geneval/geneval_prompt.jsonl" ]; then

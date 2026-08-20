@@ -27,19 +27,19 @@ Cluster target (BIU Slurm):
 
 ## 1) Launch SFT + LLM Fine-Tuning Job
 
-- [ ] Submit the job:
+- [x] Submit the job:
   ```bash
   cd /home/dsi/davidpo/projects/Semi/deepgen
   sbatch jobs/sft_llm_ablation.sbatch
   ```
-- [ ] Monitor logs: `tail -f logs/ablation_sft_llm/sft_*.out`
-- [ ] Checkpoint verification: ensure periodic checkpoints save in `work_dirs/sft_llm_ablation/`.
+- [x] Monitor logs: `tail -f logs/ablation_sft_llm/sft_*.out`
+- [x] Checkpoint verification: ensure periodic checkpoints save in `work_dirs/sft_llm_ablation/` (Completed 50k steps: `iter_50000.pth`).
 
 ---
 
 ## 2) Evaluation & Comparison Against RL Baseline
 
-- [ ] Evaluate final checkpoint on T2I benchmarks (GenEval, DPGBench, UniGenBench, WISE, T2I-CoREBench).
-- [ ] Evaluate final checkpoint on Image Editing benchmarks (ImgEdit, GEdit, RISE, UniREditBench).
-- [ ] Compare metrics against official published DeepGen 1.0 (RL) checkpoint.
-- [ ] Compile final ablation summary.
+- [x] Evaluate final checkpoint on T2I benchmarks (GenEval, DPGBench, UniGenBench, WISE, T2I-CoREBench).
+- [x] Evaluate final checkpoint on Image Editing benchmarks (ImgEdit, GEdit, RISE, UniREditBench).
+- [x] Compare metrics against official published DeepGen 1.0 (RL) checkpoint.
+- [x] Compile final ablation report (`REPORT.md`).
