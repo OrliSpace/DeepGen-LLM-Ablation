@@ -20,6 +20,7 @@ Below is an explicit map of all newly created and modified files in the reposito
 | **Comprehensive Eval** | [`deepgen/scripts/evaluation/run_comprehensive_eval.py`](file:///home/dsi/davidpo/projects/Semi/deepgen/scripts/evaluation/run_comprehensive_eval.py) | **[MODIFIED]** | Fixed DDP `module.` prefix reconciliation for adapter weight loading. |
 | **Research Report** | [`REPORT.md`](file:///home/dsi/davidpo/projects/Semi/REPORT.md) | **[MODIFIED]** | Rigorously audited research report containing exact empirical statistical tables and limitations analysis. |
 | **Repository README** | [`README.md`](file:///home/dsi/davidpo/projects/Semi/README.md) | **[MODIFIED]** | Main project landing page synchronized with empirical data and training lifecycle. |
+| **Codebase Changelog** | [`CHANGELOG_CODEBASE.md`](file:///home/dsi/davidpo/projects/Semi/CHANGELOG_CODEBASE.md) | **[NEW]** | Dedicated file tracking all repository modifications, structural additions, and bug fixes. |
 
 ---
 
@@ -221,4 +222,5 @@ python scripts/evaluation/run_statistical_eval.py \
 * **DeepGen Official Technical Report:** [https://huggingface.co/papers/2602.12205](https://huggingface.co/papers/2602.12205)
 * **Qwen2.5-VL Multimodal Backbone:** [https://github.com/QwenLM/Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL)
 * **Stable Diffusion 3.5 Medium:** [https://huggingface.co/stabilityai/stable-diffusion-3.5-medium](https://huggingface.co/stabilityai/stable-diffusion-3.5-medium)
-* **Full Research Report:** [`REPORT.md`](REPORT.md)
+* **Full Research Report:** [`REPORT.md`](file:///home/dsi/davidpo/projects/Semi/REPORT.md)
+* **Codebase Modifications Map:** [`CHANGELOG_CODEBASE.md`](file:///home/dsi/davidpo/projects/Semi/CHANGELOG_CODEBASE.md)

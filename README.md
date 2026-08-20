@@ -123,6 +123,7 @@ Because the BIU `A100-4h` partition enforces strict 4-hour job timeouts, the Slu
 | **Comprehensive Eval** | [`deepgen/scripts/evaluation/run_comprehensive_eval.py`](file:///home/dsi/davidpo/projects/Semi/deepgen/scripts/evaluation/run_comprehensive_eval.py) | **[MODIFIED]** | Fixed DDP `module.` prefix reconciliation for adapter weight loading. |
 | **Research Report** | [`REPORT.md`](file:///home/dsi/davidpo/projects/Semi/REPORT.md) | **[MODIFIED]** | Rigorously audited research report containing exact empirical statistical tables and limitations analysis. |
 | **Technical Blueprint** | [`ABLATION.md`](file:///home/dsi/davidpo/projects/Semi/ABLATION.md) | **[NEW]** | Developer reproduction guide with verified inference quickstarts and architecture breakdowns. |
+| **Codebase Changelog** | [`CHANGELOG_CODEBASE.md`](file:///home/dsi/davidpo/projects/Semi/CHANGELOG_CODEBASE.md) | **[NEW]** | Dedicated file tracking all repository modifications, structural additions, and bug fixes. |
 
 ---
 
@@ -219,6 +220,6 @@ sbatch jobs/eval_all_benchmarks.sbatch work_dirs/sft_llm_ablation/iter_50000.pth
 * **DeepGen Reinforcement Learning (MR-GRPO):** [https://github.com/deepgenteam/deepgen_rl](https://github.com/deepgenteam/deepgen_rl)
 * **DeepGen Official Technical Report:** [https://huggingface.co/papers/2602.12205](https://huggingface.co/papers/2602.12205)
 * **Qwen2.5-VL Multimodal Backbone:** [https://github.com/QwenLM/Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL)
-* **Stable Diffusion 3.5 Medium:** [https://huggingface.co/stabilityai/stable-diffusion-3.5-medium](https://huggingface.co/stabilityai/stable-diffusion-3.5-medium)
-* **Detailed Research Report:** [`REPORT.md`](REPORT.md)
-* **Developer Technical Blueprint:** [`ABLATION.md`](ABLATION.md)
+* **Detailed Research Report:** [`REPORT.md`](file:///home/dsi/davidpo/projects/Semi/REPORT.md)
+* **Developer Technical Blueprint:** [`ABLATION.md`](file:///home/dsi/davidpo/projects/Semi/ABLATION.md)
+* **Codebase Modifications Map:** [`CHANGELOG_CODEBASE.md`](file:///home/dsi/davidpo/projects/Semi/CHANGELOG_CODEBASE.md)
