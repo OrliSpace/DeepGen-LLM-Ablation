@@ -152,7 +152,7 @@ from xtuner.registry import BUILDER
 # 1. Setup paths and device
 config_path = "configs/models/deepgen_sft_llm_adapter.py"
 # Provide local file path OR Hugging Face Hub repo ID
-checkpoint_path = "work_dirs/deepgen_sft_llm_adapter_50k.pt" 
+checkpoint_path = "OrliSpace/deepgen-sft-llm-adapter"  # Or local "work_dirs/deepgen_sft_llm_adapter_50k.pt"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
@@ -236,7 +236,7 @@ api = HfApi()
 api.upload_file(
     path_or_fileobj="work_dirs/deepgen_sft_llm_adapter_50k.pt",
     path_in_repo="deepgen_sft_llm_adapter_50k.pt",
-    repo_id="your-username/deepgen-sft-llm-adapter",
+    repo_id="OrliSpace/deepgen-sft-llm-adapter",
     repo_type="model",
 )
 ```
@@ -245,6 +245,7 @@ api.upload_file(
 
 ## 6. Official References & External Links
 
+* **Trained Adapter Weights on Hugging Face:** [https://huggingface.co/OrliSpace/deepgen-sft-llm-adapter](https://huggingface.co/OrliSpace/deepgen-sft-llm-adapter)
 * **DeepGen 1.0 Base Repository:** [https://github.com/DeepGenTeam/DeepGen](https://github.com/DeepGenTeam/DeepGen)
 * **DeepGen Reinforcement Learning (MR-GRPO):** [https://github.com/deepgenteam/deepgen_rl](https://github.com/deepgenteam/deepgen_rl)
 * **DeepGen Official Technical Report:** [https://huggingface.co/papers/2602.12205](https://huggingface.co/papers/2602.12205)

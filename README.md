@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://www.biu.ac.il/en"><img src="https://img.shields.io/badge/Bar--Ilan%20University-Multimodal%20AI%20Seminar-blue?style=flat-square" alt="BIU"></a>
+  <a href="https://huggingface.co/OrliSpace/deepgen-sft-llm-adapter"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Adapter%20Weights-yellow?style=flat-square" alt="Hugging Face"></a>
   <a href="https://huggingface.co/papers/2602.12205"><img src="https://img.shields.io/badge/Baseline-DeepGen%201.0-orange?style=flat-square" alt="DeepGen 1.0"></a>
   <a href="https://huggingface.co/Qwen/Qwen2.5-3B-Instruct"><img src="https://img.shields.io/badge/Reasoning%20Backbone-Qwen2.5--3B-green?style=flat-square" alt="Qwen2.5-3B"></a>
   <a href="https://huggingface.co/Skywork/UniPic2-SD3.5M-Kontext-2B"><img src="https://img.shields.io/badge/DiT%20Backbone-SD3.5%20Kontext%202B-purple?style=flat-square" alt="UniPic2-SD3.5M-Kontext-2B"></a>
@@ -168,8 +169,8 @@ from xtuner.registry import BUILDER
 
 # 1. Setup paths and device
 config_path = "configs/models/deepgen_sft_llm_adapter.py"
-# Provide local file path OR Hugging Face Hub repo ID (e.g., "your-org/deepgen-llm-adapter")
-checkpoint_path = "work_dirs/deepgen_sft_llm_adapter_50k.pt" 
+# Provide local file path OR Hugging Face Hub repo ID
+checkpoint_path = "OrliSpace/deepgen-sft-llm-adapter"  # Or local "work_dirs/deepgen_sft_llm_adapter_50k.pt"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 dtype = torch.bfloat16 if device == "cuda" else torch.float32
 
@@ -236,7 +237,7 @@ api = HfApi()
 api.upload_file(
     path_or_fileobj="deepgen/work_dirs/deepgen_sft_llm_adapter_50k.pt",
     path_in_repo="deepgen_sft_llm_adapter_50k.pt",
-    repo_id="your-username/deepgen-sft-llm-adapter",
+    repo_id="OrliSpace/deepgen-sft-llm-adapter",
     repo_type="model",
 )
 ```
@@ -245,6 +246,7 @@ api.upload_file(
 
 ## 🏛️ Official References & External Links
 
+* **Trained Adapter Weights on Hugging Face:** [https://huggingface.co/OrliSpace/deepgen-sft-llm-adapter](https://huggingface.co/OrliSpace/deepgen-sft-llm-adapter)
 * **DeepGen 1.0 Base Repository:** [https://github.com/DeepGenTeam/DeepGen](https://github.com/DeepGenTeam/DeepGen)
 * **DeepGen Reinforcement Learning (MR-GRPO):** [https://github.com/deepgenteam/deepgen_rl](https://github.com/deepgenteam/deepgen_rl)
 * **DeepGen Official Technical Report:** [https://huggingface.co/papers/2602.12205](https://huggingface.co/papers/2602.12205)

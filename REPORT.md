@@ -368,9 +368,11 @@ This seminar research study provides a rigorous, empirical investigation into pa
 
 ## Appendix: References & External Code Repositories
 
+* **Trained Adapter Checkpoint on Hugging Face:** [https://huggingface.co/OrliSpace/deepgen-sft-llm-adapter](https://huggingface.co/OrliSpace/deepgen-sft-llm-adapter)
 * **DeepGen 1.0 Base Repository:** [https://github.com/DeepGenTeam/DeepGen](https://github.com/DeepGenTeam/DeepGen)
 * **DeepGen Reinforcement Learning (MR-GRPO):** [https://github.com/deepgenteam/deepgen_rl](https://github.com/deepgenteam/deepgen_rl)
 * **DeepGen Official Technical Report:** [https://huggingface.co/papers/2602.12205](https://huggingface.co/papers/2602.12205)
 * **Qwen2.5-VL Multimodal Backbone:** [https://github.com/QwenLM/Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL)
 * **Stable Diffusion 3.5 Medium:** [https://huggingface.co/stabilityai/stable-diffusion-3.5-medium](https://huggingface.co/stabilityai/stable-diffusion-3.5-medium)
-* **Ablation Architecture & Quickstart Guide:** [`ABLATION.md`](file:///home/dsi/davidpo/projects/Semi/ABLATION.md)
+* **Developer Quickstart & Reproduction Guide:** [`ABLATION.md`](file:///home/dsi/davidpo/projects/Semi/ABLATION.md)
+* **Codebase Modifications Map:** [`CHANGELOG_CODEBASE.md`](file:///home/dsi/davidpo/projects/Semi/CHANGELOG_CODEBASE.md)
