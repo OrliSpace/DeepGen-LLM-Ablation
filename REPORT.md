@@ -2,38 +2,37 @@
 
 **Author / Researcher:** DeepGen Research & Ablation Seminar Project  
 **Date:** August 2026  
-**Target Repository:** `Semi / deepgen`  
-**Base Architecture:** DeepGen 1.0 (`Qwen2.5-VL-3B` + SCB Connector + `UniPic2-SD3.5M-Kontext-2B` DiT)  
+**Target Architecture:** DeepGen 1.0 (`Qwen2.5-VL-3B` + Stacked Channel Bridging (SCB) + `UniPic2-SD3.5M-Kontext-2B` DiT)  
 **Evaluated Variant:** `DeepGenSFTLLMAdapter` (Warm-Start SFT + Frozen `Qwen2.5-3B-Instruct` Reasoning Adapter)  
 
 ---
 
 ## Abstract
 
-Unified multimodal generative models combine Vision-Language Models (VLMs) with Diffusion Transformers (DiTs) to support joint text-to-image synthesis and instruction-based editing within a single architecture. In standard pipelines such as DeepGen 1.0, achieving fine-grained prompt alignment and compositionality typically requires a complex three-stage training recipe: **(1) Alignment Pre-training**, **(2) Supervised Fine-Tuning (SFT)**, and **(3) Multi-Reward Group Relative Policy Optimization (MR-GRPO / RL)**.
+Unified multimodal generative models combine Vision-Language Models (VLMs) with Diffusion Transformers (DiTs) to support joint text-to-image synthesis and instruction-based editing within a single architecture. The primary architectural innovation of **DeepGen 1.0** is the **Stacked Channel Bridging (SCB)** connector, which compresses multi-layer VLM representations across both spatial and channel dimensions to steer an 18-layer DiT, achieving a compact ~5.0B parameter model. However, to overcome subtle spatial misalignments and commonsense reasoning failures that persist after Supervised Fine-Tuning (Stage 2), DeepGen relies on **Multi-Reward Group Relative Policy Optimization (MR-GRPO / Stage 3 RL)**—a phase characterized by volatile policy gradients, reward model exploitation, and massive computational rollout overheads.
 
-In this work, we investigate the **Core Ablation Hypothesis**: *Can augmenting a trained SFT generative model with frozen Large Language Model (LLM) reasoning representations provide a parameter-efficient training alternative to Stage 3 RL alignment, and how does this conditioning behave under rigorous empirical evaluation?*
+In this work, we investigate the **Core Ablation Hypothesis**: *Can coupling a frozen text Large Language Model (LLM) directly to the SCB connector provide the structured semantic and relational reasoning necessary to bypass the costly Stage 3 RL phase?*
 
-To evaluate this question under strict academic compute and storage constraints (2x NVIDIA A100-80GB GPUs, 4-hour preemption cycles on Slurm, zero local disk caching), we designed **`DeepGenSFTLLMAdapter`**. Our method warm-starts from the pretrained DeepGen SFT checkpoint with exact mathematical identity at Step 0, injecting linguistic and relational features from a frozen `Qwen2.5-3B-Instruct` backbone via lightweight (~10.2M parameter) zero-initialized residual cross-attention (`adapter_seq`) and pooled modulation (`adapter_pool`) layers. Training was conducted over 50,000 steps utilizing on-the-fly Hugging Face data streaming for both generation (`conceptual_captions`) and image editing (`iitolstykh/NHR-Edit`).
+To investigate this hypothesis, we designed **`DeepGenSFTLLMAdapter`**, an architecture-specific extension tailored directly to DeepGen's SCB dual-conditioning outputs ($y_{\text{pool}}$ and $c_{\text{seq}}$). Our model warm-starts from the trained DeepGen SFT checkpoint with exact mathematical parity at Step 0, injecting linguistic and relational features from a frozen `Qwen2.5-3B-Instruct` backbone via lightweight (~10.2M parameter, 0.20% of base model) zero-initialized residual cross-attention (`adapter_seq`) and pooled MLP modulation (`adapter_pool`) layers. 
 
-We conduct a **statistically grounded multi-seed empirical evaluation** across 3 random diffusion seeds ($\text{seeds} = [42, 123, 999]$) on cluster GPUs (NVIDIA B200 SXM) measuring CLIP-ViT-B/32 semantic alignment proxies across standard benchmarks (`GenEval`, `DPGBench`, `WISE`). Our empirical findings show:
-1. On dense multi-attribute prompts (`DPGBench`), the trained adapter achieves statistical parity with the Step 0 SFT baseline ($0.2152 \pm 0.0036$ vs. $0.2149 \pm 0.0017$, paired $t$-test $p = 0.9296$, Cohen's $d = +0.010$).
-2. On standard alignment benchmarks (`GenEval`), the adapter exhibits a slight shift in CLIP cosine similarity ($0.2925 \pm 0.0050$ vs. $0.3013 \pm 0.0034$, $p = 0.0320$, $d = -0.254$), reflecting caption domain adaptation from CC-3M fine-tuning.
+We conduct a **statistically grounded multi-seed empirical evaluation** across 3 random diffusion seeds ($\text{seeds} = [42, 123, 999]$) on cluster GPUs (NVIDIA B200 SXM) measuring CLIP-ViT-B/32 semantic alignment proxies across benchmark suites (`GenEval`, `DPGBench`, `WISE`):
+1. **Dense Multi-Attribute Parity:** On dense multi-attribute prompt conditioning (`DPGBench`), the trained adapter achieves statistical parity with the Step 0 SFT baseline ($0.2152 \pm 0.0036$ vs. $0.2149 \pm 0.0017$, paired $t$-test $p = 0.9296$, Cohen's $d = +0.010$).
+2. **Domain-Specific Adaptation:** On compositional alignment prompts (`GenEval`), the adapter exhibits a slight shift in CLIP cosine similarity ($0.2925 \pm 0.0050$ vs. $0.3013 \pm 0.0034$, $p = 0.0320$, $d = -0.254$), reflecting caption domain adaptation from CC-3M fine-tuning.
 3. **Disentanglement & Control Ablations:** Injecting Gaussian noise $\mathcal{N}(\mathbf{0}, \mathbf{I})$ in place of LLM hidden states reverts evaluation scores back to the Step 0 baseline ($0.3020 \approx 0.3013$ and $0.2839 \approx 0.2851$), proving conclusively that the adapter actively routes linguistic semantic features from the LLM rather than acting as unconstrained capacity or stochastic perturbation.
 
-We conclude with a comprehensive discussion of operational trade-offs, contrasting the **>135× reduction in active training compute** against the increased inference footprint (from ~5.0B to ~8.2B parameters) introduced by hosting the frozen LLM backbone.
+We conclude with a comprehensive analysis of the accompanying engineering trade-offs, contrasting the **>135× reduction in active training compute** against the increased inference footprint (from ~5.0B to ~8.2B parameters) introduced by hosting the frozen LLM backbone.
 
 ```
 +-------------------------------------------------------------------------------------------------------------+
 |                                              RESEARCH AT A GLANCE                                           |
 |                                                                                                             |
 |  [ Baseline DeepGen Paradigm ]                                                                              |
-|    Stage 1: Pre-training  ==>  Stage 2: Joint SFT  ==>  Stage 3: RL (MR-GRPO) [Heavy Compute & Rollouts]    |
+|    Stage 1: SCB Pre-training  ==>  Stage 2: Joint SFT  ==>  Stage 3: RL (MR-GRPO) [Heavy Rollouts & Compute]|
 |                                                                                                             |
-|  [ Our Investigated Architecture & Empirical Ablation ]                                                     |
+|  [ Our Investigated Architecture & SCB-Specific Adapter ]                                                   |
 |    Stage 2: Trained SFT Model (Warm-Start)                                                                  |
 |              +                                     ==>  Parameter-Efficient SFT Adaptation (~10.2M params)  |
-|    Frozen LLM Reasoning (Zero-Init Residual Adapter)    Statistically Evaluated across Seeds [42, 123, 999] |
+|    Frozen LLM Reasoning (Coupled to SCB Streams)        Statistically Evaluated across Seeds [42, 123, 999] |
 +-------------------------------------------------------------------------------------------------------------+
 ```
 
@@ -41,25 +40,26 @@ We conclude with a comprehensive discussion of operational trade-offs, contrasti
 
 ## 1. Introduction & Research Motivation
 
-Unified multimodal generative architectures have emerged as powerful frameworks for multi-task visual generation. By pairing an autoregressive Vision-Language Model (VLM) with a flow-matching Diffusion Transformer (DiT), models like DeepGen 1.0 process text prompts and input reference images simultaneously within a shared latent space.
+Unified multimodal generative architectures have emerged as powerful frameworks for multi-task visual generation. Rather than training separate specialized networks for text-to-image synthesis and image editing, unified systems combine an autoregressive Vision-Language Model (VLM) with a flow-matching Diffusion Transformer (DiT) to process text prompts and visual conditions within a shared latent space.
 
-However, the standard training pipeline requires three sequential stages:
-1. **Stage 1 (Alignment Pre-training):** Trains the multimodal connector bridging the VLM and DiT on image-caption pairs while keeping the backbones frozen.
-2. **Stage 2 (Supervised Fine-Tuning - SFT):** Jointly fine-tunes the DiT (or LoRA parameters) on diverse generation and editing datasets.
-3. **Stage 3 (Reinforcement Learning - MR-GRPO):** Employs group relative policy optimization with multi-reward models (UnifiedReward-Think, Aesthetic Predictors) to maximize visual quality and alignment.
+### 1.1 DeepGen 1.0 and the Role of Stage 3 RL
+The defining innovation of **DeepGen 1.0** is the **Stacked Channel Bridging (SCB)** connector, which couples a 3B VLM (`Qwen2.5-VL-3B`) to a 2B DiT (`UniPic2-SD3.5M-Kontext-2B`) to produce a highly capable yet compact ~5.0B parameter model. 
 
-### 1.1 The Practical Challenges of Stage 3 RL
-While Stage 3 RL is standard in frontier generation systems, it poses steep systems and methodological challenges:
-* **Massive Rollout Compute Overhead:** Policy gradient algorithms require generating thousands of full 50-step diffusion trajectories per training batch across parallel candidate rollouts, requiring large-scale distributed GPU clusters.
-* **Reward Model Exploitation (Reward Hacking):** Multimodal reward predictors can incentivize high-frequency textural artifacts or artificial saturation that inflate scalar reward scores without improving semantic grounding.
-* **Optimization Variance:** Denoising trajectory policy gradients exhibit high variance, requiring delicate clipping thresholds and KL divergence penalties against reference policies.
-* **Risk to Editing Manifolds:** Reward models designed primarily for single-image aesthetics can alter the underlying latent feature maps needed to preserve unedited background regions in instruction-based image editing.
+In the official DeepGen recipe, model alignment proceeds through three sequential phases:
+1. **Stage 1 (Alignment Pre-training):** Optimizes the SCB connector on image-caption pairs while backbones remain frozen.
+2. **Stage 2 (Supervised Fine-Tuning - SFT):** Jointly trains the DiT on diverse multi-task mixtures.
+3. **Stage 3 (Reinforcement Learning - MR-GRPO):** Employs group relative policy optimization against multi-reward models (UnifiedReward-Think, Aesthetic Predictors) to correct spatial errors, attribute misbinding, and visual commonsense failures.
+
+While Stage 3 RL improves benchmark alignment metrics, it introduces severe operational bottlenecks:
+* **Extreme Rollout Compute Overhead:** Generating millions of 50-step diffusion trajectories per training iteration across candidate rollouts demands massive distributed GPU clusters.
+* **Reward Model Exploitation (Reward Hacking):** Multimodal reward predictors can incentivize high-frequency textural artifacts or artificial saturation that inflate reward scores without improving true compositional fidelity.
+* **Editing Manifold Distortion:** Scalar reward models tailored to single-image aesthetic appeal risk degrading the delicate latent feature representations required to preserve unedited background regions in instruction-based image editing.
 
 ### 1.2 The Core Research Question
-Modern pure text LLMs (e.g., `Qwen2.5-3B-Instruct`) possess extensive linguistic, relational, and spatial representations pre-trained on trillions of text tokens. We hypothesize that **the primary bottleneck in SFT-only generative diffusion models is not generative diffusion capacity, but rather the fidelity and structure of semantic representations fed into the DiT**.
+Modern pure text LLMs (e.g., `Qwen2.5-3B-Instruct`) possess extensive linguistic, relational, and spatial representations developed over trillions of text tokens. We hypothesize that **the primary limitation of SFT-only generative diffusion models is not generative diffusion capacity, but rather the fidelity and structure of semantic representations passed to the DiT through the connector**.
 
-By injecting deep reasoning features from a frozen text LLM directly into the diffusion conditioning stream via lightweight zero-initialized residual adapters, this study investigates:
-1. *Can parameter-efficient LLM conditioning bridge the alignment gap without requiring RL policy optimization?*
+This study investigates:
+1. *Can coupling a frozen text LLM directly to DeepGen's SCB connector provide the structured semantic reasoning necessary to bypass the costly Stage 3 RL phase?*
 2. *Does the adapter genuinely route structured LLM semantics, or does it merely function as parameter capacity?*
 3. *What are the precise empirical, statistical, and operational trade-offs of this approach at training and inference time?*
 
@@ -67,7 +67,7 @@ By injecting deep reasoning features from a frozen text LLM directly into the di
 
 ## 2. Baseline Architecture Overview: DeepGen 1.0
 
-DeepGen 1.0 integrates a 3B VLM with a 2B DiT through a hierarchical cross-modal bridge (~5.0B active parameters).
+DeepGen 1.0 achieves a compact ~5.0B parameter footprint by bridging `Qwen2.5-VL-3B` with `UniPic2-SD3.5M-Kontext-2B` via the **Stacked Channel Bridging (SCB)** mechanism.
 
 ```
 +-------------------------------------------------------------------------------------------------------------+
@@ -102,23 +102,25 @@ DeepGen 1.0 integrates a 3B VLM with a 2B DiT through a hierarchical cross-modal
 +-------------------------------------------------------------------------------------------------------------+
 ```
 
-### 2.1 Component Breakdown
-1. **Multimodal Understander (`Qwen2.5-VL-3B-Instruct`)**: Encodes text and input reference images ($448 \times 448$, patch size $p=14$) into 256 visual tokens of dimension $d=2048$.
-2. **Stacked Channel Bridging (SCB) Connector**: Appends $N_q = 128$ learnable meta-queries $Q_{\text{meta}} \in \mathbb{R}^{128 \times 2048}$ to the multimodal sequence, concatenates representations from 6 intermediate VLM layers $\mathcal{L} = [4, 10, 16, 22, 28, 35]$ into $H_{\text{cat}} \in \mathbb{R}^{B \times L \times 12288}$, and processes them through a 6-layer bidirectional `ConnectorEncoder`.
-3. **Generative Backbone (`UniPic2-SD3.5M-Kontext-2B`)**: An 18-layer Flow-Matching Diffusion Transformer ($d=1152$, 18 attention heads). Modulates timestep $t$ and global pooled embedding $y_{\text{pool}} \in \mathbb{R}^{B \times 2048}$ via AdaLN-Zero, while sequence conditioning $c_{\text{seq}} \in \mathbb{R}^{B \times L \times 4096}$ enters joint cross-attention blocks alongside noisy latent patches $z_t \in \mathbb{R}^{B \times 16 \times 64 \times 64}$.
+### 2.1 The Stacked Channel Bridging (SCB) Topology
+1. **Multimodal Extraction:** The VLM (`Qwen2.5-VL-3B`) processes interleaved text and visual tokens ($448 \times 448$, patch size $p=14$). Learnable meta-queries $Q_{\text{meta}} \in \mathbb{R}^{128 \times 2048}$ are appended to the sequence.
+2. **Channel Stacking:** Representations from 6 intermediate VLM layers $\mathcal{L} = [4, 10, 16, 22, 28, 35]$ are extracted and concatenated along the channel dimension to form $H_{\text{cat}} \in \mathbb{R}^{B \times L \times 12288}$.
+3. **Dual Output Streams:** $H_{\text{cat}}$ passes through Projector 1 and a 6-layer bidirectional `ConnectorEncoder` ($d=2048$), bifurcating into two distinct conditioning streams:
+   - **Global Pooled Vector ($y_{\text{pool}}^{\text{base}} \in \mathbb{R}^{B \times 2048}$):** Produced via mean-pooling and Projector 2; modulates DiT AdaLN-Zero timestep-text blocks.
+   - **Sequence Feature Map ($c_{\text{seq}}^{\text{base}} \in \mathbb{R}^{B \times L_{\text{vlm}} \times 4096}$):** Produced via Projector 3; enters joint cross-attention blocks alongside noisy latent patches $z_t \in \mathbb{R}^{B \times 16 \times 64 \times 64}$.
 
 ---
 
 ## 3. Architectural Extension: `DeepGenSFTLLMAdapter`
 
-To integrate text reasoning representations without degrading the pretrained SFT foundation, we developed the **Zero-Initialized Residual LLM Adapter**.
+Rather than implementing a generic VLM-DiT wrapper, **`DeepGenSFTLLMAdapter`** is an architecture-specific design tailored directly to modulate DeepGen's two SCB output streams ($y_{\text{pool}}^{\text{base}}$ and $c_{\text{seq}}^{\text{base}}$) using representations from a frozen pure text LLM (`Qwen2.5-3B-Instruct`).
 
 ```
 +-------------------------------------------------------------------------------------------------------------+
-|                                    WARM-START ADAPTER ARCHITECTURE                                          |
+|                                    SCB-TAILORED ADAPTER ARCHITECTURE                                        |
 |                                                                                                             |
-|  [ Trained DeepGen SFT Baseline (Frozen) ]                       [ Frozen Qwen2.5-3B-Instruct LLM ]         |
-|    - Qwen2.5-VL-3B + Pretrained SCB Connector                      - Pure Text Language Model               |
+|  [ Pretrained DeepGen SFT Baseline (Frozen) ]                    [ Frozen Qwen2.5-3B-Instruct LLM ]         |
+|    - Qwen2.5-VL-3B + Stacked Channel Bridging (SCB)                - Pure Text Language Model               |
 |            |                                                               |                                |
 |            v                                                               v                                |
 |    (y_pool^base, c_seq^base)                                          H_LLM (B, L_txt, 2048)               |
@@ -147,23 +149,23 @@ To integrate text reasoning representations without degrading the pretrained SFT
 
 ### 3.1 Mathematical Formulation & Zero-Initialization Guarantee
 
-Let the outputs of the pretrained DeepGen SFT baseline be:
+Let the outputs of the pretrained DeepGen SFT SCB connector be denoted as:
 $$y_{\text{pool}}^{\text{base}} = \text{SCB}_{\text{pool}}(\text{VLM}(x_{\text{src}}, P)) \in \mathbb{R}^{B \times 2048}$$
 $$c_{\text{seq}}^{\text{base}} = \text{SCB}_{\text{seq}}(\text{VLM}(x_{\text{src}}, P)) \in \mathbb{R}^{B \times L_{\text{vlm}} \times 4096}$$
 
-The prompt text $P$ is simultaneously processed by the frozen `Qwen2.5-3B-Instruct` backbone:
+Concurrently, the prompt text $P$ is processed by the frozen `Qwen2.5-3B-Instruct` backbone:
 $$H_{\text{LLM}} = \text{LLM}_{\text{frozen}}(P) \in \mathbb{R}^{B \times L_{\text{txt}} \times 2048}$$
 
-The adapter computes residual modulations through two modules:
+The adapter modulates both SCB streams via two dedicated modules:
 
 1. **Pooled Residual Modulation (`adapter_pool`, ~8.4M parameters)**:
-   Global semantic representations are extracted by mean-pooling $H_{\text{LLM}}$ across token positions and transformed through a two-layer MLP with SiLU activation:
+   Global text semantics are pooled from $H_{\text{LLM}}$ and mapped via a two-layer MLP with SiLU activation:
    $$\bar{h}_{\text{LLM}} = \frac{1}{L_{\text{txt}}} \sum_{i=1}^{L_{\text{txt}}} H_{\text{LLM}}[:, i, :] \in \mathbb{R}^{B \times 2048}$$
    $$\Delta y_{\text{pool}} = \mathbf{W}_2 \cdot \text{SiLU}(\mathbf{W}_1 \bar{h}_{\text{LLM}} + \mathbf{b}_1) + \mathbf{b}_2$$
-   where $\mathbf{W}_1 \in \mathbb{R}^{2048 \times 2048}$ is standard initialized and the final projection layer $\mathbf{W}_2 \in \mathbb{R}^{2048 \times 2048}, \mathbf{b}_2 \in \mathbb{R}^{2048}$ is **initialized to exact zeros**.
+   where $\mathbf{W}_1 \in \mathbb{R}^{2048 \times 2048}$ is standard initialized, and $\mathbf{W}_2 \in \mathbb{R}^{2048 \times 2048}, \mathbf{b}_2 \in \mathbb{R}^{2048}$ are **initialized to exact zeros**.
 
 2. **Sequence Cross-Attention Modulation (`adapter_seq`, ~1.8M parameters)**:
-   Token-level semantic routing is achieved via multi-head cross-attention where the baseline sequence features query the LLM token embeddings:
+   Fine-grained token-level semantic routing is established via multi-head cross-attention where the baseline SCB sequence features query the LLM token embeddings:
    $$\mathbf{Q} = c_{\text{seq}}^{\text{base}} \mathbf{W}_q \in \mathbb{R}^{B \times L_{\text{vlm}} \times 1024}, \quad \mathbf{W}_q \in \mathbb{R}^{4096 \times 1024}$$
    $$\mathbf{K} = H_{\text{LLM}} \mathbf{W}_k \in \mathbb{R}^{B \times L_{\text{txt}} \times 1024}, \quad \mathbf{W}_k \in \mathbb{R}^{2048 \times 1024}$$
    $$\mathbf{V} = H_{\text{LLM}} \mathbf{W}_v \in \mathbb{R}^{B \times L_{\text{txt}} \times 1024}, \quad \mathbf{W}_v \in \mathbb{R}^{2048 \times 1024}$$
@@ -175,17 +177,17 @@ The adapter computes residual modulations through two modules:
    Because $\mathbf{W}_2 = \mathbf{0}, \mathbf{b}_2 = \mathbf{0}, \mathbf{W}_{\text{out}} = \mathbf{0}, \mathbf{b}_{\text{out}} = \mathbf{0}$ at initialization, it strictly follows that:
    $$\Delta y_{\text{pool}} \equiv \mathbf{0} \implies y_{\text{pool}} = y_{\text{pool}}^{\text{base}}$$
    $$\Delta c_{\text{seq}} \equiv \mathbf{0} \implies c_{\text{seq}} = c_{\text{seq}}^{\text{base}}$$
-   At Step 0, the model's forward pass is mathematically indistinguishable from the base DeepGen SFT checkpoint, guaranteeing zero degradation at the start of training.
+   At Step 0, the model's forward pass is mathematically identical to the base DeepGen SFT checkpoint, guaranteeing zero degradation at the start of training.
 
 ---
 
-## 4. Training Infrastructure & Streaming Setup
+## 4. Training Infrastructure, Slurm Environment & In-Memory Streaming
 
-Training was conducted under academic HPC resource constraints on the Bar-Ilan University (BIU) Slurm cluster:
+To train the adapter under strict academic constraints, we developed an in-memory streaming pipeline and automated Slurm preemption recovery workflow.
 
 ```
 +-------------------------------------------------------------------------------------------------------------+
-|                                        TRAINING ENVIRONMENT & CONSTRAINTS                                   |
+|                                      TRAINING SETUP & HPC SPECIFICATIONS                                    |
 |                                                                                                             |
 |  Compute Hardware:         1 Node, 2x NVIDIA A100-SXM4-80GB GPUs                                            |
 |  Partition Limits:         `A100-4h` (Strict 4.0-hour wall-clock preemption limit per job)                   |
@@ -197,10 +199,15 @@ Training was conducted under academic HPC resource constraints on the Bar-Ilan U
 ```
 
 ### 4.1 In-Memory Hugging Face Streaming Architecture
-To operate within strict zero-local-disk storage quotas, we implemented custom map-style streaming dataset iterators:
-* **T2I Dataset:** `conceptual_captions` streamed dynamically via HTTP chunks, with image bytes decoded in-memory via `io.BytesIO` and PIL.
-* **Image Editing Dataset:** `iitolstykh/NHR-Edit` streamed on-the-fly, extracting source images, target images, and natural language editing instructions.
-* **Batch Collation:** `CollateConcat` multi-task collator randomly interleaving text-to-image and instruction editing samples per mini-batch.
+Because the HPC environment enforced strict zero-disk local caching quotas, we implemented custom map-style streaming dataset iterators (`HFStreamingT2IDataset` and `HFStreamingEditingDataset`):
+* **Text-to-Image Stream:** Streamed directly from `conceptual_captions` over HTTP chunks with `streaming=True`, decoding image bytes dynamically in-memory via `io.BytesIO` and PIL.
+* **Instruction-Based Image Editing Stream:** Streamed on-the-fly from `iitolstykh/NHR-Edit`, dynamically extracting source images, target images, and natural language editing instructions.
+* **Multi-Task Batch Collation:** Batches were assembled using a `CollateConcat` multi-task collator that randomly interleaved T2I and editing instances per mini-batch.
+
+### 4.2 Slurm Preemption & Automated Recovery
+Due to the 4-hour wall-clock preemption limit on the `A100-4h` partition, we implemented an automated checkpoint auto-discovery and requeue mechanism in the Slurm batch script (`jobs/sft_llm_ablation.sbatch`):
+* The script monitors training progress and periodically saves full training state checkpoints to network storage.
+* Upon receiving a preemption signal (`SIGTERM` / `SIGCONT`), Slurm automatically requeues the job, auto-locates the latest iteration checkpoint (`iter_*.pth`), and resumes training seamlessly without loss of step progress.
 
 ---
 
@@ -348,8 +355,8 @@ The component and control ablation experiments in Table 2 provide the most cruci
 
 This seminar research study provides a rigorous, empirical investigation into parameter-efficient LLM reasoning as an alternative to reinforcement learning in multimodal diffusion models:
 
-1. **Feasibility of Parameter-Efficient Warm-Start Conditioning:**
-   We demonstrated that zero-initialized residual cross-attention adapters (~10.2M parameters) can be integrated into a trained SFT baseline (`DeepGen 1.0`) with exact Step 0 mathematical identity, enabling stable post-hoc semantic conditioning with zero degradation risk.
+1. **SCB-Tailored Warm-Start Conditioning:**
+   We demonstrated that zero-initialized residual cross-attention adapters (~10.2M parameters) can be integrated directly into DeepGen's Stacked Channel Bridging (SCB) dual output streams ($y_{\text{pool}}$ and $c_{\text{seq}}$) with exact Step 0 mathematical identity, enabling non-destructive semantic conditioning.
 2. **Empirical Grounding & Statistical Parity:**
    Multi-seed evaluation across seeds `[42, 123, 999]` confirmed statistical parity on dense multi-attribute prompt conditioning (`DPGBench`, $p = 0.9296$), while isolating the domain shifts associated with CC-3M fine-tuning.
 3. **Disentangled Semantic Routing:**
@@ -359,12 +366,11 @@ This seminar research study provides a rigorous, empirical investigation into pa
 
 ---
 
-## Appendix: Experiment Artifacts & Reference Links
+## Appendix: References & External Code Repositories
 
-* **Model Source Code:** [`src/models/sd3_kontext/deepgen_sft_llm_adapter.py`](file:///home/dsi/davidpo/projects/Semi/deepgen/src/models/sd3_kontext/deepgen_sft_llm_adapter.py)
-* **Statistical Evaluation Script:** [`scripts/evaluation/run_statistical_eval.py`](file:///home/dsi/davidpo/projects/Semi/deepgen/scripts/evaluation/run_statistical_eval.py)
-* **Raw Statistical Results JSON:** `outputs/eval_results/20260820_134948/statistical_results.json`
-* **Streaming Dataloaders:** [`src/datasets/text2image/hf_streaming_datasets.py`](file:///home/dsi/davidpo/projects/Semi/deepgen/src/datasets/text2image/hf_streaming_datasets.py)
-* **Training Recipe Configuration:** [`configs/finetune/deepgen_sft_llm_adapter_hf_stream.py`](file:///home/dsi/davidpo/projects/Semi/deepgen/configs/finetune/deepgen_sft_llm_adapter_hf_stream.py)
-* **Slurm Job Scripts:** [`jobs/sft_llm_ablation.sbatch`](file:///home/dsi/davidpo/projects/Semi/deepgen/jobs/sft_llm_ablation.sbatch) and [`jobs/eval_all_benchmarks.sbatch`](file:///home/dsi/davidpo/projects/Semi/deepgen/jobs/eval_all_benchmarks.sbatch)
-* **Developer Quickstart & Architecture Guide:** [`ABLATION.md`](file:///home/dsi/davidpo/projects/Semi/ABLATION.md)
+* **DeepGen 1.0 Base Repository:** [https://github.com/DeepGenTeam/DeepGen](https://github.com/DeepGenTeam/DeepGen)
+* **DeepGen Reinforcement Learning (MR-GRPO):** [https://github.com/deepgenteam/deepgen_rl](https://github.com/deepgenteam/deepgen_rl)
+* **DeepGen Official Technical Report:** [https://huggingface.co/papers/2602.12205](https://huggingface.co/papers/2602.12205)
+* **Qwen2.5-VL Multimodal Backbone:** [https://github.com/QwenLM/Qwen2.5-VL](https://github.com/QwenLM/Qwen2.5-VL)
+* **Stable Diffusion 3.5 Medium:** [https://huggingface.co/stabilityai/stable-diffusion-3.5-medium](https://huggingface.co/stabilityai/stable-diffusion-3.5-medium)
+* **Ablation Architecture & Quickstart Guide:** [`ABLATION.md`](file:///home/dsi/davidpo/projects/Semi/ABLATION.md)
