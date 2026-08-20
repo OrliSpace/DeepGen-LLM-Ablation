@@ -26,6 +26,10 @@ DeepGen's core architectural innovation is the **Stacked Channel Bridging (SCB)*
 1. **Global Pooled Vector ($y_{\text{pool}} \in \mathbb{R}^{B \times 2048}$):** Modulates DiT AdaLN-Zero timestep-text conditioning blocks.
 2. **Sequence Token Embeddings ($c_{\text{seq}} \in \mathbb{R}^{B \times L \times 4096}$):** Injected into DiT joint cross-attention blocks alongside latent image patches.
 
+![Figure 2: SCB adapter architecture](figures/figure2_scb_adapter_architecture.png)
+
+*Figure 2. SCB connector topology and the dual-branch injection of `adapter_seq` and `adapter_pool` from the frozen text LLM.*
+
 ### The Research Question: Bypassing Stage 3 RL
 To resolve spatial misconceptions and visual commonsense failures that persist after Supervised Fine-Tuning (Stage 2), DeepGen relies on **Multi-Reward Group Relative Policy Optimization (MR-GRPO / Stage 3 RL)**. However, Stage 3 RL introduces massive compute costs (millions of full 50-step diffusion trajectory rollouts), policy gradient optimization volatility, reward hacking risks, and potential distortion of multi-turn editing manifolds.
 
@@ -33,6 +37,10 @@ To resolve spatial misconceptions and visual commonsense failures that persist a
 > *Can coupling a frozen text Large Language Model (`Qwen2.5-3B-Instruct`) directly to DeepGen's Stacked Channel Bridging (SCB) connector provide the structured semantic reasoning necessary to bypass Stage 3 RL, and what are the empirical, statistical, and operational trade-offs?*
 
 To investigate this question, we designed **`DeepGenSFTLLMAdapter`**, warm-starting from the trained DeepGen SFT checkpoint with exact mathematical identity at Step 0, injecting linguistic and relational features via lightweight (~10.2M parameter, 0.20% footprint) zero-initialized residual cross-attention (`adapter_seq`) and pooled modulation (`adapter_pool`) layers.
+
+![Figure 1: DeepGen pipeline overview and the SFT plus LLM adapter paradigm](figures/figure1_pipeline_overview.png)
+
+*Figure 1. DeepGen pipeline overview and comparison between the Stage 3 RL baseline and the parameter-efficient SFT adapter approach.*
 
 ```
 +-------------------------------------------------------------------------------------------------------------+

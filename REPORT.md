@@ -63,6 +63,10 @@ This study investigates:
 2. *Does the adapter genuinely route structured LLM semantics, or does it merely function as parameter capacity?*
 3. *What are the precise empirical, statistical, and operational trade-offs of this approach at training and inference time?*
 
+![Figure 1: DeepGen pipeline overview and the SFT plus LLM adapter paradigm](figures/figure1_pipeline_overview.png)
+
+*Figure 1. DeepGen pipeline overview and comparison between the Stage 3 RL baseline and the parameter-efficient SFT adapter approach.*
+
 ---
 
 ## 2. Baseline Architecture Overview: DeepGen 1.0
@@ -114,6 +118,10 @@ DeepGen 1.0 achieves a compact ~5.0B parameter footprint by bridging `Qwen2.5-VL
 ## 3. Architectural Extension: `DeepGenSFTLLMAdapter`
 
 Rather than implementing a generic VLM-DiT wrapper, **`DeepGenSFTLLMAdapter`** is an architecture-specific design tailored directly to modulate DeepGen's two SCB output streams ($y_{\text{pool}}^{\text{base}}$ and $c_{\text{seq}}^{\text{base}}$) using representations from a frozen pure text LLM (`Qwen2.5-3B-Instruct`).
+
+![Figure 2: SCB adapter architecture](figures/figure2_scb_adapter_architecture.png)
+
+*Figure 2. SCB connector topology and the dual-branch injection of `adapter_seq` and `adapter_pool` from the frozen text LLM.*
 
 ```
 +-------------------------------------------------------------------------------------------------------------+
