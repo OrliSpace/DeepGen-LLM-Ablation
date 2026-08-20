@@ -28,9 +28,9 @@ class GenEval(Dataset):
     def __getitem__(self, idx):
         data_dict = copy.deepcopy(self.data[idx])
         text = data_dict['prompt']
-        detailed_caption = data_dict['detailed_caption']
+        detailed_caption = data_dict.get('detailed_caption', text)
 
-        data_dict.update(idx=idx, text=text,detailed_caption=detailed_caption)
+        data_dict.update(idx=idx, text=text, detailed_caption=detailed_caption)
 
         return data_dict
 

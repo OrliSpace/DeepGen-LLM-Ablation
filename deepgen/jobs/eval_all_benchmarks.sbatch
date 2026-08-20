@@ -30,7 +30,11 @@ if [ -z "$CKPT_PATH" ]; then
 fi
 
 CONFIG_PATH="configs/models/deepgen_sft_llm_adapter.py"
-OUTPUT_ROOT="outputs/eval_results/$(date +%Y%m%d_%H%M%S)"
+if [ ! -z "$2" ]; then
+    OUTPUT_ROOT="$2"
+else
+    OUTPUT_ROOT="outputs/eval_results/$(date +%Y%m%d_%H%M%S)"
+fi
 mkdir -p $OUTPUT_ROOT
 
 echo "=========================================================="
@@ -41,93 +45,19 @@ echo "Output Directory: $OUTPUT_ROOT"
 echo "Partition: $SLURM_JOB_PARTITION | Node: $SLURMD_NODENAME"
 echo "=========================================================="
 
-# 1. First run smoke test validation
-echo "--> Step 0: Executing Fast Smoke Test on Trained Checkpoint..."
-python scripts/evaluation/smoke_test_eval.py --checkpoint "$CKPT_PATH" --config "$CONFIG_PATH" --output "$OUTPUT_ROOT/smoke_test"
-
-# 2. Text-to-Image Benchmarks (if evaluation data folders exist)
-if [ -f "evaluation/geneval/geneval_prompt.jsonl" ]; then
-    echo "--> Running GenEval Benchmark..."
-    python scripts/evaluation/gen_eval.py \
-        --config $CONFIG_PATH \
-        --checkpoint $CKPT_PATH \
-        --data evaluation/geneval/geneval_prompt.jsonl \
-        --output $OUTPUT_ROOT/geneval \
-        --height 512 --width 512
-fi
-
-if [ -d "evaluation/DPG-Bench/prompts" ]; then
-    echo "--> Running DPGBench Benchmark..."
-    python scripts/evaluation/dpg_bench.py \
-        --config $CONFIG_PATH \
-        --checkpoint $CKPT_PATH \
-        --data evaluation/DPG-Bench/prompts \
-        --output $OUTPUT_ROOT/dpgbench \
-        --height 512 --width 512
-fi
-
-if [ -f "evaluation/wise/data/spatio-temporal_reasoning.json" ]; then
-    echo "--> Running WISE Benchmark..."
-    python scripts/evaluation/wise.py \
-        --config $CONFIG_PATH \
-        --checkpoint $CKPT_PATH \
-        --data evaluation/wise/data/spatio-temporal_reasoning.json \
-        --output $OUTPUT_ROOT/wise \
-        --height 512 --width 512
-fi
-
-if [ -f "evaluation/UniGenBench/test_prompts_en.csv" ]; then
-    echo "--> Running UniGenBench Benchmark..."
-    python scripts/evaluation/unigenbench.py \
-        --config $CONFIG_PATH \
-        --checkpoint $CKPT_PATH \
-        --csv_path evaluation/UniGenBench/test_prompts_en.csv \
-        --output $OUTPUT_ROOT/unigenbench \
-        --height 512 --width 512
-fi
-
-# 3. Instruction-based Image Editing Benchmarks
-if [ -d "evaluation/ImgEdit/Benchmark/singleturn" ]; then
-    echo "--> Running ImgEdit Benchmark..."
-    python scripts/evaluation/img_edit.py \
-        --config $CONFIG_PATH \
-        --checkpoint $CKPT_PATH \
-        --data evaluation/ImgEdit/Benchmark/singleturn \
-        --output $OUTPUT_ROOT/imgedit \
-        --height 512 --width 512
-fi
-
-if [ -d "evaluation/GEdit-Bench" ]; then
-    echo "--> Running GEdit Benchmark..."
-    python scripts/evaluation/gedit.py \
-        --config $CONFIG_PATH \
-        --checkpoint $CKPT_PATH \
-        --data evaluation/GEdit-Bench \
-        --output $OUTPUT_ROOT/gedit \
-        --height 512 --width 512
-fi
-
-if [ -d "evaluation/RISEBench-full" ]; then
-    echo "--> Running RISE Benchmark..."
-    python scripts/evaluation/rise_bench.py \
-        --config $CONFIG_PATH \
-        --checkpoint $CKPT_PATH \
-        --data evaluation/RISEBench-full \
-        --output $OUTPUT_ROOT/rise \
-        --height 512 --width 512
-fi
-
-if [ -d "evaluation/UniREditBench" ]; then
-    echo "--> Running UniREditBench Benchmark..."
-    python scripts/evaluation/unireditbench.py \
-        --config $CONFIG_PATH \
-        --checkpoint $CKPT_PATH \
-        --data evaluation/UniREditBench \
-        --output $OUTPUT_ROOT/unireditbench \
-        --height 512 --width 512
-fi
+# 1. Run Statistical Multi-Seed Benchmark Suite & Component Ablation
+echo "--> Executing Statistical Multi-Seed Benchmark Suite & Component Ablation..."
+python scripts/evaluation/run_statistical_eval.py \
+    --config "$CONFIG_PATH" \
+    --checkpoint "$CKPT_PATH" \
+    --output_dir "$OUTPUT_ROOT" \
+    --num_samples 25 \
+    --batch_size 4 \
+    --cfg_scale 4.0 \
+    --num_steps 50 \
+    --seeds 42 123 999
 
 echo "=========================================================="
-echo "All Evaluations Completed Successfully at $(date)!"
+echo "All Statistical Evaluations Completed Successfully at $(date)!"
 echo "Outputs stored in: $OUTPUT_ROOT"
 echo "=========================================================="

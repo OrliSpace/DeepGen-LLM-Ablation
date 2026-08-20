@@ -93,7 +93,7 @@ if __name__ == '__main__':
     for batch_idx, data_samples in tqdm(enumerate(dataloader), disable=not accelerator.is_main_process):
         device_idx = accelerator.process_index
 
-        prompt = [data_sample['text'].strip() for data_sample in data_samples] * 4
+        prompt = [data_sample['text'].strip() for data_sample in data_samples]
         cfg_prompt = [args.cfg_prompt] * len(prompt)
 
         images = model.generate(prompt=prompt, cfg_prompt=cfg_prompt, pixel_values_src=None,
@@ -107,5 +107,5 @@ if __name__ == '__main__':
 
         # Save samples to disk as individual .png files
         for image, data_sample in zip(images, data_samples):
-            prompt_id = data_sample['prompt_id']
+            prompt_id = data_sample.get('prompt_id', str(data_sample.get('idx', 0)))
             Image.fromarray(image).save(f"{args.output}/{prompt_id}.png")
